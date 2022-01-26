@@ -19,6 +19,18 @@ public class Maybe<A> implements Monad<A, Maybe<?>> {
         return a == null ? nothing() : just(a);
     }
 
+    public final Boolean isNothing() {
+        return this instanceof Maybe.Nothing<A>;
+    }
+
+    public A fromJust() {
+        if (isNothing()) {
+            throw new NullPointerException("Nothing can not extract element");
+        } else {
+            return fromJust();
+        }
+    }
+
     @Override
     public final <B> Maybe<B> pure(B b) {
         return just(b);
@@ -26,7 +38,7 @@ public class Maybe<A> implements Monad<A, Maybe<?>> {
 
     @Override
     public <B> Maybe<B> map(Function<? super A, ? extends B> f) {
-        if (this instanceof Maybe.Nothing<A>) {
+        if (isNothing()) {
             return nothing();
         } else {
             return map(f);
@@ -35,7 +47,7 @@ public class Maybe<A> implements Monad<A, Maybe<?>> {
 
     @Override
     public <B> Maybe<B> fmap(Applicative<Function<? super A, ? extends B>, Maybe<?>> af) {
-        if (this instanceof Maybe.Nothing<A>) {
+        if (isNothing()) {
             return nothing();
         } else {
             return fmap(af);
@@ -44,7 +56,7 @@ public class Maybe<A> implements Monad<A, Maybe<?>> {
 
     @Override
     public <B> Maybe<B> bind(Function<? super A, ? extends Monad<B, Maybe<?>>> mf) {
-        if (this instanceof Maybe.Nothing<A>) {
+        if (isNothing()) {
             return nothing();
         } else {
             return bind(mf);
@@ -68,6 +80,11 @@ public class Maybe<A> implements Monad<A, Maybe<?>> {
 
         private Just(A a) {
             value = a;
+        }
+
+        @Override
+        public A fromJust() {
+            return value;
         }
 
         @Override
