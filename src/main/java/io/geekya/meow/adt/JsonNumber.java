@@ -3,5 +3,14 @@ package io.geekya.meow.adt;
 public final class JsonNumber extends JsonValue {
     // Todo
     // support float number in the future.
-    Integer value;
+    private final Integer value;
+
+    public JsonNumber(Integer value) {
+        this.value = value;
+    }
+
+    @Override
+    public String toString() {
+        return "JsonNumber " + value;
+    }
 }
