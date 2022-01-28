@@ -1,5 +1,6 @@
 package io.geekya.meow;
 
+import java.util.Objects;
 import java.util.function.Function;
 
 public class Maybe<A> implements Monad<A, Maybe<?>> {
@@ -12,6 +13,9 @@ public class Maybe<A> implements Monad<A, Maybe<?>> {
     }
 
     public static <A> Maybe<A> just(A a) {
+        if (a == null) {
+            throw new NullPointerException("Just can not be created with null");
+        }
         return new Just<>(a);
     }
 
@@ -76,36 +80,46 @@ public class Maybe<A> implements Monad<A, Maybe<?>> {
     }
 
     private static final class Just<A> extends Maybe<A> {
-        private final A value;
+        private final A a;
 
         private Just(A a) {
-            value = a;
+            this.a = a;
         }
 
         @Override
         public A fromJust() {
-            return value;
+            return a;
         }
 
         @Override
         public <B> Maybe<B> map(Function<? super A, ? extends B> f) {
-            return pure(f.apply(value));
+            return pure(f.apply(a));
         }
 
-        @Override
         @SuppressWarnings("unchecked")
+        @Override
         public <B> Maybe<B> fmap(Applicative<Function<? super A, ? extends B>, Maybe<?>> af) {
-            return (Maybe<B>) af.map(a -> a.apply(value));
+            return (Maybe<B>) af.map(f -> f.apply(a));
         }
 
         @Override
         public <B> Maybe<B> bind(Function<? super A, ? extends Monad<B, Maybe<?>>> mf) {
-            return (Maybe<B>) mf.apply(value);
+            return (Maybe<B>) mf.apply(a);
         }
 
         @Override
         public String toString() {
-            return "Just " + value;
+            return "Just " + a;
+        }
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof Maybe.Just<?> && Objects.equals(this.a, ((Just<?>) obj).a);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hashCode(a);
         }
     }
 }
