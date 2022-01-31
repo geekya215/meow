@@ -21,11 +21,11 @@ public class Parser<A> implements IParser<A>, Monad<A, Parser<?>> {
         this.p = p;
     }
 
-    static Parser<Character> pred(Predicate<Character> p) {
+    public static Parser<Character> pred(Predicate<Character> p) {
         return id.bind(c -> p.test(c) ? id.pure(c) : id.fail());
     }
 
-    static Parser<Character> character(Character x) {
+    public static Parser<Character> character(Character x) {
         return pred(c -> c == x);
     }
 
@@ -97,9 +97,7 @@ public class Parser<A> implements IParser<A>, Monad<A, Parser<?>> {
 
     @Override
     public <B> Parser<B> fmap(Applicative<Function<? super A, ? extends B>, Parser<?>> af) {
-        // Todo
-        // OwO
-        return null;
+        return (Parser<B>) af.map(f -> bind(a -> pure(f.apply(a))));
     }
 
     @Override
