@@ -42,29 +42,17 @@ public class Maybe<A> implements Monad<A, Maybe<?>> {
 
     @Override
     public <B> Maybe<B> map(Function<? super A, ? extends B> f) {
-        if (isNothing()) {
-            return nothing();
-        } else {
-            return map(f);
-        }
+        return isNothing() ? nothing() : map(f);
     }
 
     @Override
     public <B> Maybe<B> fmap(Applicative<Function<? super A, ? extends B>, Maybe<?>> af) {
-        if (isNothing()) {
-            return nothing();
-        } else {
-            return fmap(af);
-        }
+        return isNothing() ? nothing() : fmap(af);
     }
 
     @Override
     public <B> Maybe<B> bind(Function<? super A, ? extends Monad<B, Maybe<?>>> mf) {
-        if (isNothing()) {
-            return nothing();
-        } else {
-            return bind(mf);
-        }
+        return isNothing() ? nothing() : bind(mf);
     }
 
     private static final class Nothing<A> extends Maybe<A> {
