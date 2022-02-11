@@ -19,6 +19,21 @@ public class Pair<A, B> {
 
     @Override
     public String toString() {
-        return "(" + a + ", " + b + ')';
+        String sa = a == null ? "null" : a.toString();
+        String sb = b == null ? "null" : b.toString();
+
+        if (a instanceof String) {
+            sa = "\"" + sa + "\"";
+        } else if (a instanceof Character) {
+            sa = "'" + sa + "'";
+        }
+
+        if (b instanceof String) {
+            sb = "\"" + sb + "\"";
+        } else if (b instanceof Character) {
+            sb = "'" + sb + "'";
+        }
+
+        return "(" + sa + ", " + sb + ')';
     }
 }
