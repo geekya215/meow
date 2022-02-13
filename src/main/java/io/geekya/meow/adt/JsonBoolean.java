@@ -3,9 +3,12 @@ package io.geekya.meow.adt;
 import java.util.Objects;
 
 public final class JsonBoolean extends JsonValue {
+    public static JsonBoolean TRUE = new JsonBoolean(true);
+    public static JsonBoolean FALSE = new JsonBoolean(false);
+
     private final Boolean value;
 
-    public JsonBoolean(Boolean value) {
+    private JsonBoolean(Boolean value) {
         this.value = value;
     }
 
