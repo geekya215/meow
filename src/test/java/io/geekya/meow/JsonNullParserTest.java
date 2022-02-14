@@ -23,7 +23,6 @@ public class JsonNullParserTest {
 
     @Test
     public void parseFail() {
-        Parsec<JsonNull> parser = Meow.JsonNullParser;
         assertEquals(nothing(), parser.parse("nul"));
         assertEquals(nothing(), parser.parse("nul  "));
     }
