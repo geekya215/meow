@@ -7,8 +7,12 @@ public final class JsonNumber extends JsonValue {
     // support float number in the future.
     private final Integer value;
 
-    public JsonNumber(Integer value) {
+    private JsonNumber(Integer value) {
         this.value = value;
+    }
+
+    public static JsonNumber of(Integer value) {
+        return new JsonNumber(value);
     }
 
     @Override

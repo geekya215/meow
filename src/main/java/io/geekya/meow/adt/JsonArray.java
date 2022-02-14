@@ -6,8 +6,12 @@ import java.util.Objects;
 public final class JsonArray extends JsonValue {
     private final List<JsonValue> value;
 
-    public JsonArray(List<JsonValue> value) {
+    private JsonArray(List<JsonValue> value) {
         this.value = value;
+    }
+
+    public static JsonArray of(List<JsonValue> value) {
+        return new JsonArray(value);
     }
 
     @Override

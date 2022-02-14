@@ -6,8 +6,12 @@ import java.util.Objects;
 public final class JsonObject extends JsonValue {
     private final Map<String, JsonValue> value;
 
-    public JsonObject(Map<String, JsonValue> value) {
+    private JsonObject(Map<String, JsonValue> value) {
         this.value = value;
+    }
+
+    public static JsonObject of(Map<String, JsonValue> value) {
+        return new JsonObject(value);
     }
 
     @Override

@@ -5,8 +5,12 @@ import java.util.Objects;
 public final class JsonString extends JsonValue {
     private final String value;
 
-    public JsonString(String value) {
+    private JsonString(String value) {
         this.value = value;
+    }
+
+    public static JsonString of(String value) {
+        return new JsonString(value);
     }
 
     @Override
