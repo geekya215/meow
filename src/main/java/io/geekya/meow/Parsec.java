@@ -84,6 +84,10 @@ public class Parsec<A> implements Parser<A>, Monad<A, Parsec<?>> {
         }));
     }
 
+    public Parsec<A> trimSpace() {
+        return character(' ').many().discardL(this).discardR(character(' ').many());
+    }
+
     public Maybe<A> parse(String inp) {
         return runParser(inp).bind(p -> Maybe.just(p.fst()));
     }

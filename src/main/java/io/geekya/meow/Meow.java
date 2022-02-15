@@ -4,18 +4,15 @@ import io.geekya.meow.adt.JsonBoolean;
 import io.geekya.meow.adt.JsonNull;
 import io.geekya.meow.adt.JsonNumber;
 
-import java.util.List;
-
 public class Meow {
-    private static final Parsec<List<Character>> space = Parsec.character(' ').many();
-    private static final Parsec<Integer> digit = Parsec.sat(Character::isDigit).map(Character::getNumericValue);
+    private static final Parsec<Integer> digit = Parsec.sat(c -> c >= '0' && c <= '9').map(c -> c - '0');
     private static final Parsec<Integer> nat = digit.some().map(x -> x.stream().reduce(0, (a, b) -> a * 10 + b));
 
-    public static final Parsec<JsonNull> JsonNullParser = space.discardL(Parsec.string("null")).discardR(space).map(a -> JsonNull.INSTANCE);
+    public static final Parsec<JsonNull> JsonNullParser = Parsec.string("null").trimSpace().map(a -> JsonNull.INSTANCE);
 
-    public static final Parsec<JsonBoolean> JsonBooleanParser = space.discardL(Parsec.string("true")).discardR(space).map(a -> JsonBoolean.TRUE)
-      .plus(space.discardL(Parsec.string("false")).discardR(space).map(a -> JsonBoolean.FALSE));
+    public static final Parsec<JsonBoolean> JsonBooleanParser = Parsec.string("true").trimSpace().map(a -> JsonBoolean.TRUE)
+      .plus(Parsec.string("false").trimSpace().map(a -> JsonBoolean.FALSE));
 
-    public static final Parsec<JsonNumber> JsonNumberParser = space.discardL(nat).discardR(space)
-      .plus(space.discardL(Parsec.character('-').discardL(nat).discardR(space)).map(a -> -a)).map(a -> JsonNumber.of(a));
+    public static final Parsec<JsonNumber> JsonNumberParser = nat.trimSpace()
+      .plus(Parsec.character('-').discardL(nat).trimSpace().map(a -> -a)).map(a -> JsonNumber.of(a));
 }
