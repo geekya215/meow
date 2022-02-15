@@ -84,6 +84,15 @@ public class Parsec<A> implements Parser<A>, Monad<A, Parsec<?>> {
         }));
     }
 
+    public Parsec<List<A>> count(Integer n) {
+        return n == 0
+          ? result(new ArrayList<>())
+          : bind(a -> count(n - 1).bind(b -> {
+            b.add(0, a);
+            return result(b);
+        }));
+    }
+
     public Parsec<A> between(Parsec<Character> open, Parsec<Character> close) {
         return open.discardL(this).discardR(close);
     }

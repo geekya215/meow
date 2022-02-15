@@ -17,6 +17,11 @@ public class JsonStringParserTest {
         assertEquals(just(JsonString.of("hello")), parser.parse("\"hello\""));
         assertEquals(just(JsonString.of("hello\nworld!")), parser.parse("\"hello\\nworld!\""));
         assertEquals(just(JsonString.of("\\ / \b \f \n \r \t")), parser.parse("\"\\\\ \\/ \\b \\f \\n \\r \\t\""));
+
+        assertEquals(just(JsonString.of("\0")), parser.parse("\"\\u0000\""));
+        assertEquals(just(JsonString.of("\u0024")), parser.parse("\"\\u0024\""));
+        assertEquals(just(JsonString.of("hello, \u00A2")), parser.parse("\"hello, \\u00A2\""));
+        assertEquals(just(JsonString.of("hello, \\\u00A2")), parser.parse("\"hello, \\\\\\u00A2\""));
     }
 
     @Test
