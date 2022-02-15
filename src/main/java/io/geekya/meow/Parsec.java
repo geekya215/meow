@@ -84,6 +84,10 @@ public class Parsec<A> implements Parser<A>, Monad<A, Parsec<?>> {
         }));
     }
 
+    public Parsec<A> between(Parsec<Character> open, Parsec<Character> close) {
+        return open.discardL(this).discardR(close);
+    }
+
     public Parsec<A> trimSpace() {
         return character(' ').many().discardL(this).discardR(character(' ').many());
     }
