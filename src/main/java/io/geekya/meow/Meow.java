@@ -1,41 +1,66 @@
 package io.geekya.meow;
 
-import io.geekya.meow.adt.JsonBoolean;
-import io.geekya.meow.adt.JsonNull;
-import io.geekya.meow.adt.JsonNumber;
-import io.geekya.meow.adt.JsonString;
+import io.geekya.meow.adt.JsonValue;
+
+import java.util.List;
+import java.util.function.Predicate;
+
+import static io.geekya.meow.Parsec.*;
+
 
 public class Meow {
-    private static final Parsec<Character> letter = Parsec.sat(c -> (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'));
-    private static final Parsec<Character> number = Parsec.sat(c -> c >= '0' && c <= '9');
-    private static final Parsec<Integer> digit = number.map(c -> c - '0');
-    private static final Parsec<Integer> nat = digit.some().map(x -> x.stream().reduce(0, (a, b) -> a * 10 + b));
-    private static final Parsec<Character> EscapedChar = Parsec.string("\\\"").map(x -> '\"')
-      .plus(Parsec.string("\\\\").map(x -> '\\'))
-      .plus(Parsec.string("\\/").map(x -> '/'))
-      .plus(Parsec.string("\\b").map(x -> '\b'))
-      .plus(Parsec.string("\\f").map(x -> '\f'))
-      .plus(Parsec.string("\\n").map(x -> '\n'))
-      .plus(Parsec.string("\\r").map(x -> '\r'))
-      .plus(Parsec.string("\\t").map(x -> '\t'));
+    private static final Predicate<Character> isLower = c -> c >= 'a' && c <= 'z';
+    private static final Predicate<Character> isUpper = c -> c >= 'A' && c <= 'Z';
+    private static final Predicate<Character> isDigit = c -> c >= '0' && c <= '9';
+    private static final Predicate<Character> isUnescapedChar = c -> c != '\"' && c != '\\';
+
+    private static final Parsec<Character> lower = satisfy(isLower);
+    private static final Parsec<Character> upper = satisfy(isUpper);
+    private static final Parsec<Character> digit = satisfy(isDigit);
+    private static final Parsec<Character> unEscapedChar = satisfy(isUnescapedChar);
+    private static final Parsec<Character> letter = lower.or(upper);
+    private static final Parsec<Character> comma = character(',');
+    private static final Parsec<Character> colon = character(':');
+    private static final Parsec<Character> openBrace = character('{');
+    private static final Parsec<Character> closeBrace = character('}');
+    private static final Parsec<Character> openBracket = character('[');
+    private static final Parsec<Character> closeBracket = character(']');
+
+    // escape sequences
+    private static final Parsec<Character> doubleQuote = string("\\\"").map(s -> '\"');
+    private static final Parsec<Character> singleQuote = string("\\\'").map(s -> '\'');
+    private static final Parsec<Character> backslash = string("\\\\").map(s -> '\\');
+    private static final Parsec<Character> backspace = string("\\b").map(s -> '\b');
+    private static final Parsec<Character> formfeed = string("\\f").map(s -> '\f');
+    private static final Parsec<Character> newline = string("\\n").map(s -> '\n');
+    private static final Parsec<Character> carriageReturn = string("\\r").map(s -> '\r');
+    private static final Parsec<Character> tab = string("\\t").map(s -> '\t');
+
+    private static final Parsec<Character> escape = choice(List.of(
+      doubleQuote, singleQuote, backslash, backspace, formfeed, newline, carriageReturn, tab
+    ));
 
     // Do not support BMP unicode
-    private static final Parsec<Character> UnicodeChar = Parsec.string("\\u").discardL(letter.plus(number).count(4))
+    private static final Parsec<Character> unicode = discardL(string("\\u"), count(4, letter.or(digit)))
       .map(a -> a.stream().map(c -> String.valueOf(c)).reduce("", (c, d) -> c + d))
       .map(c -> (char) Integer.parseInt(c, 16));
 
-    public static final Parsec<JsonNull> JsonNullParser = Parsec.string("null").trimSpace().map(a -> JsonNull.INSTANCE);
+    private static final Parsec<List<Character>> nat = many1(digit);
 
-    public static final Parsec<JsonBoolean> JsonBooleanParser = Parsec.string("true").trimSpace().map(a -> JsonBoolean.TRUE)
-      .plus(Parsec.string("false").trimSpace().map(a -> JsonBoolean.FALSE));
+    public static final Parsec<List<Character>> _null = string("null");
+    public static final Parsec<List<Character>> _boolean = string("true").or(string("false"));
+    public static final Parsec<List<Character>> _number = discardL(character('-'), nat).map(a -> {
+        a.add(0, '-');
+        return a;
+    }).or(nat);
+    public static final Parsec<List<Character>> _string = between(
+      character('\"'), character('\"'),
+      many(choice(List.of(unEscapedChar, escape, unicode))));
 
-    public static final Parsec<JsonNumber> JsonNumberParser = nat.trimSpace()
-      .plus(Parsec.character('-').discardL(nat).trimSpace().map(a -> -a)).map(a -> JsonNumber.of(a));
+    public static final Parsec<List<Character>> _value = choice(List.of(
+      _null, _boolean, _number, _string));
 
-    public static final Parsec<JsonString> JsonStringParser = Parsec.sat(c -> c != '\"' && c != '\\')
-      .plus(EscapedChar)
-      .plus(UnicodeChar)
-      .many()
-      .between(Parsec.character('\"'), Parsec.character('\"')).trimSpace()
-      .map(a -> JsonString.of(a.stream().map(c -> String.valueOf(c)).reduce("", (c, d) -> c + d)));
+    public static final Parsec<List<List<Character>>> _array = between(
+      openBracket, closeBracket,
+      sepBy(_value, comma));
 }

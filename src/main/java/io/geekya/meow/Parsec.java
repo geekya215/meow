@@ -1,6 +1,7 @@
 package io.geekya.meow;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 import java.util.function.Predicate;
@@ -12,93 +13,113 @@ public class Parsec<A> implements Parser<A>, Monad<A, Parsec<?>> {
         this.pf = pf;
     }
 
-    private static Parsec<Character> item() {
+    public static Parsec<Character> item() {
         return new Parsec<>(s -> s.isEmpty()
           ? Maybe.nothing()
           : Maybe.just(new Pair<>(s.charAt(0), s.substring(1))));
     }
 
-    public static Parsec<Character> sat(Predicate<Character> p) {
+    public static Parsec<Character> satisfy(Predicate<Character> p) {
         return item().bind(
           x -> p.test(x)
-            ? item().result(x) : item().zero());
+            ? item().result(x) : item().fail());
     }
 
     public static Parsec<Character> character(Character x) {
-        return sat(c -> c == x);
+        return satisfy(c -> c == x);
     }
 
-    public static Parsec<String> string(String s) {
+    public static Parsec<List<Character>> string(String s) {
         return s.isEmpty()
-          ? item().result("")
-          : character(s.charAt(0)).bind(x -> string(s.substring(1)).bind(y -> item().result(s)));
+          ? item().result(new ArrayList<>())
+          : character(s.charAt(0)).bind(x -> string(s.substring(1)).bind(xs -> {
+            xs.add(0, x);
+            return item().result(xs);
+        }));
     }
 
-    // primitive parsers
-    private <B> Parsec<B> result(B b) {
-        return pure(b);
+    public static <B> Parsec<List<B>> many(Parsec<B> p) {
+        return new Parsec<>(inp -> {
+            Maybe<Pair<B, String>> m = p.runParser(inp);
+            if (m.isNothing()) {
+                return Maybe.just(new Pair<>(new ArrayList<>(), inp));
+            } else {
+                Pair<B, String> pair = m.fromJust();
+                Maybe<Pair<List<B>, String>> r = many(p).runParser(pair.snd());
+                r.fromJust().fst().add(0, pair.fst());
+                return r;
+            }
+        });
     }
 
-    private Parsec<A> zero() {
-        return new Parsec<>(s -> Maybe.nothing());
+    public static <B> Parsec<List<B>> many1(Parsec<B> p) {
+        return p.bind(a -> many(p).bind(b -> {
+            b.add(0, a);
+            return p.result(b);
+        }));
     }
 
-    // parser combinators
-    public <B> Parsec<Pair<A, B>> seq(Parsec<B> b) {
-        return bind(x -> b.bind(y -> result(new Pair<>(x, y))));
+    public static <B> Parsec<List<B>> count(Integer n, Parsec<B> p) {
+        return n == 0
+          ? p.result(new ArrayList<>())
+          : p.bind(a -> count(n - 1, p).bind(b -> {
+            b.add(0, a);
+            return p.result(b);
+        }));
     }
 
-    public Parsec<A> plus(Parsec<A> a) {
+    @SafeVarargs
+    public static <B> Parsec<List<B>> seq(Parsec<B>... ps) {
+        return ps.length == 0
+          ? item().result(new ArrayList<>())
+          : ps[0].bind(a -> seq(Arrays.copyOfRange(ps, 1, ps.length)).bind(b -> {
+            b.add(0, a);
+            return item().result(b);
+        }));
+    }
+
+    public static <B> Parsec<List<B>> sepBy(Parsec<B> p, Parsec<Character> sep) {
+        return sepBy1(p, sep).or(p.result(new ArrayList<>()));
+    }
+
+    public static <B> Parsec<List<B>> sepBy1(Parsec<B> p, Parsec<Character> sep) {
+        return p.bind(a -> many(sep.bind(b -> p)).bind(b -> {
+            b.add(0, a);
+            return p.result(b);
+        }));
+    }
+
+    public static <L, R> Parsec<R> discardL(Parsec<L> l, Parsec<R> r) {
+        return l.bind(a -> r.bind(b -> l.result(b)));
+    }
+
+    public static <L, R> Parsec<L> discardR(Parsec<L> l, Parsec<R> r) {
+        return l.bind(a -> r.bind(b -> l.result(a)));
+    }
+
+    public Parsec<A> or(Parsec<A> a) {
         return new Parsec<>(inp -> {
             Maybe<Pair<A, String>> m = runParser(inp);
             return m.isNothing() ? a.runParser(inp) : m;
         });
     }
 
-    public <B> Parsec<B> discardL(Parsec<B> p) {
-        return bind(a -> p.bind(b -> result(b)));
+    public static <B> Parsec<B> choice(List<Parsec<B>> ps) {
+        return ps.isEmpty()
+          ? new Parsec<>(inp -> Maybe.nothing())
+          : ps.get(0).or(choice(ps.subList(1, ps.size())));
     }
 
-    public <B> Parsec<A> discardR(Parsec<B> p) {
-        return bind(a -> p.bind(b -> result(a)));
+    public static <B> Parsec<B> between(Parsec<Character> open, Parsec<Character> close, Parsec<B> p) {
+        return discardR(discardL(open, p), close);
     }
 
-    public Parsec<List<A>> many() {
-        return new Parsec<>(inp -> {
-            Maybe<Pair<A, String>> m = runParser(inp);
-            if (m.isNothing()) {
-                return Maybe.just(new Pair<>(new ArrayList<>(), inp));
-            } else {
-                Pair<A, String> p = m.fromJust();
-                Maybe<Pair<List<A>, String>> r = many().runParser(p.snd());
-                r.fromJust().fst().add(0, p.fst());
-                return r;
-            }
-        });
+    private <B> Parsec<B> result(B b) {
+        return pure(b);
     }
 
-    public Parsec<List<A>> some() {
-        return bind(a -> many().bind(b -> {
-            b.add(0, a);
-            return result(b);
-        }));
-    }
-
-    public Parsec<List<A>> count(Integer n) {
-        return n == 0
-          ? result(new ArrayList<>())
-          : bind(a -> count(n - 1).bind(b -> {
-            b.add(0, a);
-            return result(b);
-        }));
-    }
-
-    public Parsec<A> between(Parsec<Character> open, Parsec<Character> close) {
-        return open.discardL(this).discardR(close);
-    }
-
-    public Parsec<A> trimSpace() {
-        return character(' ').many().discardL(this).discardR(character(' ').many());
+    private Parsec<A> fail() {
+        return new Parsec<>(s -> Maybe.nothing());
     }
 
     public Maybe<A> parse(String inp) {
