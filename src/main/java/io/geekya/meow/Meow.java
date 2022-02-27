@@ -53,6 +53,7 @@ public class Meow {
     public static final Parsec<JsonValue> _null = string("null").map(s -> JsonNull.INSTANCE);
     public static final Parsec<JsonValue> _true = string("true").map(s -> JsonBoolean.TRUE);
     public static final Parsec<JsonValue> _false = string("false").map(s -> JsonBoolean.FALSE);
+    public static final Parsec<JsonValue> _boolean = _true.or(_false);
     public static final Parsec<JsonValue> _number = discardL(character('-'), _num).map(x -> -x).or(_num).map(x -> JsonNumber.of(x));
 
     public static final Parsec<String> _str = between(
@@ -65,7 +66,7 @@ public class Meow {
     // can not recursive definition of JsonValue
     // because of forward reference
     public static final Parsec<JsonValue> _value = choice(List.of(
-      _null, _true, _false, _number, _string));
+      _null, _boolean, _number, _string));
 
     public static final Parsec<JsonValue> _array = between(
       openBracket, closeBracket,
