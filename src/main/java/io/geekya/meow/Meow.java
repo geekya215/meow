@@ -1,7 +1,5 @@
 package io.geekya.meow;
 
-import io.geekya.meow.adt.JsonValue;
-
 import java.util.List;
 import java.util.function.Predicate;
 
@@ -63,4 +61,15 @@ public class Meow {
     public static final Parsec<List<List<Character>>> _array = between(
       openBracket, closeBracket,
       sepBy(_value, comma));
+
+    public static final Parsec<Pair<String, List<Character>>> _pair = discardR(_string, colon).bind(
+      k -> _value.bind(v -> {
+          String key = k.stream().map(c -> String.valueOf(c)).reduce("", (c, d) -> c + d);
+          return _value.pure(new Pair<>(key, v));
+      })
+    );
+
+    public static final Parsec<List<Pair<String, List<Character>>>> _object = between(
+      openBrace, closeBrace,
+      sepBy(_pair, comma));
 }
