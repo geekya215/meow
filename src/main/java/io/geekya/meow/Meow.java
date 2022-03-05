@@ -4,53 +4,61 @@ import io.geekya.meow.adt.*;
 
 import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 import static io.geekya.meow.Chars.*;
-import static io.geekya.meow.Parsec.*;
-
+import static io.geekya.meow.Combinator.*;
 
 public class Meow {
-    private static final Parsec<List<Character>> nat = many1(digit);
-    private static final Parsec<Integer> _num = nat.map(a -> a.stream().map(c -> c - '0').reduce(0, (c, d) -> c * 10 + d));
+    private static final Parser.Ref<JsonValue> _value = Parser.ref();
 
-    public static final Parsec<JsonValue> _null = string("null").map(s -> JsonNull.INSTANCE);
-    public static final Parsec<JsonValue> _true = string("true").map(s -> JsonBoolean.TRUE);
-    public static final Parsec<JsonValue> _false = string("false").map(s -> JsonBoolean.FALSE);
-    public static final Parsec<JsonValue> _boolean = _true.or(_false);
-    public static final Parsec<JsonValue> _number = discardL(character('-'), _num).map(x -> -x).or(_num).map(x -> JsonNumber.of(x));
+    private static final Parser<JsonValue> _null = string("null").map(s -> JsonNull.INSTANCE);
+    private static final Parser<JsonValue> _true = string("true").map(s -> JsonBoolean.TRUE);
+    private static final Parser<JsonValue> _false = string("false").map(s -> JsonBoolean.FALSE);
 
-    public static final Parsec<String> _str = between(
+    private static final Parser<JsonValue> _boolean = _true.or(_false);
+
+    private static final Parser<Character> digital = satisfy(c -> c >= '0' && c <= '9');
+    private static final Parser<Integer> nat = many1(digital)
+      .map(s -> s.stream().map(c -> c - '0').reduce(0, (a, b) -> a * 10 + b));
+    private static final Parser<Integer> _integer = character('-').bind(neg -> nat.map(n -> -n)).or(nat);
+    private static final Parser<JsonValue> _number = _integer.map(JsonNumber::of);
+
+    private static final Parser<String> _str = between(
       character('\"'), character('\"'),
-      many(choice(List.of(unEscapedChar, escape, unicode)))
-    ).map(a -> a.stream().map(c -> String.valueOf(c)).reduce("", (c, d) -> c + d));
+      many(validChar)
+    ).map(a -> a.stream().map(String::valueOf).reduce("", (b, c) -> b + c));
 
-    public static final Parsec<JsonValue> _string = _str.map(s -> JsonString.of(s));
+    private static final Parser<JsonValue> _string = _str.map(JsonString::of);
 
-    // can not recursive definition of JsonValue
-    // because of forward reference
-    public static final Parsec<JsonValue> _value = choice(List.of(
-      _null, _boolean, _number, _string));
-
-    public static final Parsec<JsonValue> _array = between(
+    private static final Parser<JsonValue> _array = between(
       openBracket, closeBracket,
-      sepBy(_value, comma))
-      .map(a -> JsonArray.of(a));
+      sepBy(_value, character(',')))
+      .map(JsonArray::of);
 
-    public static final Parsec<Pair<String, JsonValue>> _pair = discardR(_str, colon).bind(
-      k -> _value.bind(v -> _value.pure(new Pair<>(k, v))));
+    private static final Parser<Pair<String, JsonValue>> _field = discardR(_str, colon).bind(
+      k -> _value.bind(v -> pure(new Pair<>(k, v))));
 
-    public static final Parsec<JsonValue> _object = between(
+    private static final Parser<JsonValue> _object = between(
       openBrace, closeBrace,
-      sepBy(_pair, comma))
-      .map(a -> {
-          Map<String, JsonValue> map = new HashMap<>();
-          for (Pair<String, JsonValue> pair : a) {
-              map.put(pair.fst(), pair.snd());
-          }
-          return JsonObject.of(map);
-      });
+      sepBy(_field, comma)
+        .map(a -> {
+            HashMap<String, JsonValue> map = new HashMap<>();
+            for (Pair<String, JsonValue> p : a) {
+                map.put(p.fst(), p.snd());
+            }
+            return JsonObject.of(map);
+        })
+    );
 
-    public static final Parsec<JsonValue> _json = choice(List.of(
-      _value, _array, _object));
+    // fix forward reference
+    static {
+        _value.set(choice(List.of(
+          _null,
+          _boolean,
+          _number,
+          _string,
+          _array,
+          _object
+        )));
+    }
 }
