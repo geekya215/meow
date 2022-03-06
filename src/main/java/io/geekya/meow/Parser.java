@@ -52,6 +52,14 @@ public interface Parser<A> {
         return Combinator.sepBy1(this, sep);
     }
 
+    default Parser<Void> skipMany(Parser<Character> sep) {
+        return Combinator.skipMany(sep);
+    }
+
+    default Parser<Void> skipMany1(Parser<Character> sep) {
+        return Combinator.skipMany1(sep);
+    }
+
     default Parser<A> between(Parser<Character> open, Parser<Character> close) {
         return Combinator.between(open, close, this);
     }

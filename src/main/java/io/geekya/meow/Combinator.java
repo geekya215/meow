@@ -27,7 +27,7 @@ public class Combinator {
     }
 
     public static <L, R> Parser<R> discardL(Parser<L> l, Parser<R> r) {
-        return bind(r, a -> bind(l, b -> pure(a)));
+        return bind(l, a -> bind(r, b -> pure(b)));
     }
 
     public static <L, R> Parser<L> discardR(Parser<L> l, Parser<R> r) {
@@ -86,6 +86,14 @@ public class Combinator {
             as.add(0, a);
             return pure(as);
         }));
+    }
+
+    public static Parser<Void> skipMany(Parser<Character> p) {
+        return bind(many(p), a -> pure(null));
+    }
+
+    public static Parser<Void> skipMany1(Parser<Character> p) {
+        return bind(many1(p), a -> pure(null));
     }
 
     public static <A> Parser<A> between(Parser<Character> open, Parser<Character> close, Parser<A> p) {
