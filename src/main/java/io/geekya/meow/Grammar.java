@@ -99,7 +99,4 @@ public class Grammar {
     }
 
     public static Parser<JsonValue> _json = many(whiteSpace).discardL(_value);
-
-    public static void main(String[] args) {
-    }
 }
