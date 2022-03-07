@@ -1,7 +1,5 @@
 package io.geekya.meow;
 
-import io.geekya.meow.adt.*;
-
 import java.util.HashMap;
 import java.util.List;
 import java.util.function.Predicate;
@@ -26,10 +24,10 @@ public class Grammar {
     // create dummy parser
     public static Parser.Ref<JsonValue> _value = Parser.ref();
 
-    public static Parser<JsonValue> _null = tokenizer(string("null")).discardL(pure(JsonNull.INSTANCE));
+    public static Parser<JsonValue> _null = tokenizer(string("null")).discardL(pure(JsonValue.NULL));
 
-    public static Parser<JsonValue> _true = string("true").discardL(pure(JsonBoolean.TRUE));
-    public static Parser<JsonValue> _false = string("false").discardL(pure(JsonBoolean.FALSE));
+    public static Parser<JsonValue> _true = string("true").discardL(pure(JsonValue.TRUE));
+    public static Parser<JsonValue> _false = string("false").discardL(pure(JsonValue.FALSE));
     public static Parser<JsonValue> _boolean = tokenizer(_true.or(_false));
 
     public static Parser<String> _int = string("0").or(satisfy(c -> c >= '1' && c <= '9')
@@ -49,7 +47,7 @@ public class Grammar {
       .bind(d -> many1(digit).map(a -> a.stream().map(c -> String.valueOf(c)).reduce("", (_1, _2) -> _1 + _2))
         .bind(n -> pure(d + n)));
 
-    // all number represented as float
+    // all numbers represented as float
     public static Parser<Float> _float = string("-").or(string("")).bind(
       s -> _int.bind(
         i -> _fraction.or(string("")).bind(
@@ -59,7 +57,7 @@ public class Grammar {
         )
       ));
 
-    public static Parser<JsonValue> _number = tokenizer(_float.map(f -> JsonNumber.of(f)));
+    public static Parser<JsonValue> _number = tokenizer(_float.map(f -> JsonValue.of(f)));
 
     public static Parser<Character> unicode = count(4, digit.or(letter))
       .map(a -> a.stream().map(b -> Character.digit(b, 16)).reduce(0, (c, d) -> c * 16 + d))
@@ -84,12 +82,12 @@ public class Grammar {
       many(_char)
     ).map(a -> a.stream().map(b -> String.valueOf(b)).reduce("", (c, d) -> c + d)));
 
-    public static Parser<JsonValue> _string = _str.map(s -> JsonString.of(s));
+    public static Parser<JsonValue> _string = _str.map(s -> JsonValue.of(s));
 
     public static Parser<JsonValue> _array = between(
       tokenizer(character('[')), tokenizer(character(']')),
       sepBy(_value, tokenizer(character(',')))
-    ).map(a -> JsonArray.of(a));
+    ).map(a -> JsonValue.of(a));
 
     public static Parser<Pair<String, JsonValue>> _pair = _str.bind(
       k -> tokenizer(character(':')).discardL(_value).map(v -> new Pair<>(k, v)));
@@ -102,7 +100,7 @@ public class Grammar {
         for (Pair<String, JsonValue> pair : a) {
             map.put(pair.fst(), pair.snd());
         }
-        return JsonObject.of(map);
+        return JsonValue.of(map);
     });
 
     // fix forward reference
