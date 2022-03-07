@@ -8,6 +8,7 @@ import java.util.function.Predicate;
 
 import static io.geekya.meow.Combinator.*;
 
+// grammar reference: https://github.com/antlr/grammars-v4/blob/master/json/JSON.g4
 public class Grammar {
     // skip tail whitespace
     public static <T> Parser<T> tokenizer(Parser<T> p) {
@@ -31,16 +32,34 @@ public class Grammar {
     public static Parser<JsonValue> _false = string("false").discardL(pure(JsonBoolean.FALSE));
     public static Parser<JsonValue> _boolean = tokenizer(_true.or(_false));
 
-    public static Parser<Integer> _zero = character('0').discardL(pure(0));
-    public static Parser<Integer> _nonzero = satisfy(c -> c >= '1' && c <= '9')
+    public static Parser<String> _int = string("0").or(satisfy(c -> c >= '1' && c <= '9')
       .bind(c -> many(digit)
         .bind(d -> {
             d.add(0, c);
-            return pure(d.stream().map(e -> e - '0').reduce(0, (a, b) -> a * 10 + b));
-        }));
-    public static Parser<Integer> nat = _zero.or(_nonzero);
-    public static Parser<Integer> _negative = character('-').discardL(nat.map(n -> -n));
-    public static Parser<JsonValue> _number = tokenizer(_negative.or(nat).map(n -> JsonNumber.of(n)));
+            return pure(d.stream().map(e -> e - '0').reduce(0, (a, b) -> a * 10 + b).toString());
+        })));
+
+    public static Parser<String> _exponent = string("e").or(string("E"))
+      .bind(
+        e -> string("+").or(string("-").or(string(""))).
+          bind(s -> _int.
+            bind(i -> pure(e + s + i))));
+
+    public static Parser<String> _fraction = string(".")
+      .bind(d -> many1(digit).map(a -> a.stream().map(c -> String.valueOf(c)).reduce("", (_1, _2) -> _1 + _2))
+        .bind(n -> pure(d + n)));
+
+    // all number represented as float
+    public static Parser<Float> _float = string("-").or(string("")).bind(
+      s -> _int.bind(
+        i -> _fraction.or(string("")).bind(
+          f -> _exponent.or(string("")).bind(
+            e -> pure(Float.parseFloat(s + i + f + e))
+          )
+        )
+      ));
+
+    public static Parser<JsonValue> _number = tokenizer(_float.map(f -> JsonNumber.of(f)));
 
     public static Parser<Character> unicode = count(4, digit.or(letter))
       .map(a -> a.stream().map(b -> Character.digit(b, 16)).reduce(0, (c, d) -> c * 16 + d))
