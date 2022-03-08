@@ -13,6 +13,10 @@ public class Grammar {
         return p.bind(r -> many(whiteSpace).discardL(pure(r)));
     }
 
+    public static Parser<String> optional(Parser<String> p) {
+        return p.or(pure(""));
+    }
+
     public static final Predicate<Character> isWhiteSpace = c -> c == ' ' || c == '\t' || c == '\n' || c == '\r';
     public static final Predicate<Character> isDigit = c -> c >= '0' && c <= '9';
     public static final Predicate<Character> isLetter = c -> (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z');
@@ -30,32 +34,32 @@ public class Grammar {
     public static Parser<JsonValue> _false = string("false").discardL(pure(JsonValue.FALSE));
     public static Parser<JsonValue> _boolean = tokenizer(_true.or(_false));
 
-    public static Parser<String> _int = string("0").or(satisfy(c -> c >= '1' && c <= '9')
-      .bind(c -> many(digit)
-        .bind(d -> {
+    public static Parser<String> _positive = string("+");
+    public static Parser<String> _negative = string("-");
+    public static Parser<String> _sign = _positive.or(_negative);
+
+    public static Parser<String> _int = string("0").or(satisfy(c -> c >= '1' && c <= '9').bind(
+      c -> many(digit).bind(
+        d -> {
             d.add(0, c);
             return pure(d.stream().map(e -> e - '0').reduce(0, (a, b) -> a * 10 + b).toString());
         })));
 
-    public static Parser<String> _exponent = string("e").or(string("E"))
-      .bind(
-        e -> string("+").or(string("-").or(string(""))).
-          bind(s -> _int.
-            bind(i -> pure(e + s + i))));
+    public static Parser<String> _exponent = string("e").or(string("E")).bind(
+      e -> optional(_sign).bind(
+        s -> _int.bind(
+          i -> pure(e + s + i))));
 
-    public static Parser<String> _fraction = string(".")
-      .bind(d -> many1(digit).map(a -> a.stream().map(c -> String.valueOf(c)).reduce("", (_1, _2) -> _1 + _2))
-        .bind(n -> pure(d + n)));
+    public static Parser<String> _fraction = string(".").bind(
+      d -> many1(digit).map(a -> a.stream().map(c -> String.valueOf(c)).reduce("", (_1, _2) -> _1 + _2)).bind(
+        n -> pure(d + n)));
 
     // all numbers represented as float
-    public static Parser<Float> _float = string("-").or(string("")).bind(
+    public static Parser<Float> _float = optional(_negative).bind(
       s -> _int.bind(
-        i -> _fraction.or(string("")).bind(
-          f -> _exponent.or(string("")).bind(
-            e -> pure(Float.parseFloat(s + i + f + e))
-          )
-        )
-      ));
+        i -> optional(_fraction).bind(
+          f -> optional(_exponent).bind(
+            e -> pure(Float.parseFloat(s + i + f + e))))));
 
     public static Parser<JsonValue> _number = tokenizer(_float.map(f -> JsonValue.of(f)));
 
